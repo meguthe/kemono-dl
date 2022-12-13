@@ -201,11 +201,19 @@ def get_args():
                     help="Set a custom user agent")
 
     ap.add_argument("--local-hash",
-                    action=argparse.BooleanOptionalAction, default=False,
+                    action='store_true', default=False,
+                    help='Check hash before skip downloading local exist files')
+
+    ap.add_argument("--no-local-hash",
+                    action='store_true', default=False,
                     help='Check hash before skip downloading local exist files')
 
     ap.add_argument("--dupe-check",
-                    action=argparse.BooleanOptionalAction, default=True,
+                    action='store_true', default=True,
+                    help='Simple similar filename file search and hash compare to prevent duplicate downloads, only works with "{index}_" first file naming scheme')
+
+    ap.add_argument("--no-dupe-check",
+                    action='store_true', default=False,
                     help='Simple similar filename file search and hash compare to prevent duplicate downloads, only works with "{index}_" first file naming scheme')
 
     args = vars(ap.parse_args())
@@ -313,5 +321,10 @@ def get_args():
         if len(temp) == 0:
             print(f"--coomer-fav-users no valid options were passed")
         args['coomer_fav_users'] = temp
+
+    if args['no_local_hash']:
+        args['local_hash'] = False
+    if args['no_dupe_check']:
+        args['dupe_check'] = False
 
     return args
