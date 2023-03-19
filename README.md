@@ -8,16 +8,16 @@ A downloader tool for kemono.party and coomer.party.
     - If the command doesn't run try adding `python -m`, `python3 -m`, or `py -m` to the front
 4.  Get a cookie.txt file from kemono.party/coomer.party
     - You can get a cookie text file on [Chrome](https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid?hl=en) with this extension.
-    - A cookie.txt file is required to use downloader!
+    - A cookie.txt file is required to use favorites.
 5.  Run `python kemono-dl.py --cookies "cookie.txt" --links https://kemono.party/SERVICE/user/USERID`
     - If the script doesn't run try replacing `python` with `python3` or `py`
 
 # Command Line Options
 
-## Required!
+## To use login required features
 
 `--cookies FILE`  
-Takes in a cookie file or a list of cookie files separated by a comma. Used to get around the DDOS protection. Your cookie file must have been gotten while logged in to use the favorite options.  
+Takes in a cookie file or a list of cookie files separated by a comma. Used to get around the DDOS protection(?). Your cookie file must have been gotten while logged in to use the favorite options.  
 
 ## What posts to download
 
@@ -128,7 +128,15 @@ The time in seconds to wait after being ratelimited (default: 120)
 Hash check before skip existing files. (default: False)    
 `--[no-]dupe-check`    
 Look for same index file with similar name and compare to server hash to prevent duplicate downloads. Works only for naming schemes starts with index, for now (maybe). (default: True)    
-*notice: idk if last two args works together or not, i'll never use options other than these two defaults because that's why i make them default. if you use them and have issues please report.*
+> *notice: idk if last two args works together or not, i'll never use options other than these two defaults because that's why i make them default. if you use them and have issues please report.*
+
+`--[no-]force-unlisted`    
+Still try to request api if user is not found in creators list. Use carefully. (default: False)    
+`--retry-403 COUNT`    
+When get 403 (possibly because of DDoS-Guard), retry without session up to `COUNT` times. (default: 0)    
+`--[mo-]fp-added`    
+Filter posts by added date instead of published date. Override behavior of --date --dateafter --datebefore. (default: False)    
+
 
 # Notes
 -   Excepted link formats:

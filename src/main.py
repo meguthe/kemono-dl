@@ -27,7 +27,7 @@ class downloader:
         self.creators = []
 
         # requests variables
-        self.headers = {'User-Agent': args['user_agent']}
+        self.headers = {'User-Agent': args['user_agent']} if args['user_agent'] else {}
         self.cookies = args['cookies']
         self.timeout = 300
 
@@ -70,6 +70,8 @@ class downloader:
         self.not_ext = args['skip_filetypes']
         self.max_size = args['max_filesize']
         self.min_size = args['min_filesize']
+        self.only_filename = args['only_filename']
+        self.not_filename = args['skip_filename']
 
         # controlls posts to ignore
         self.date = args['date']
@@ -77,6 +79,8 @@ class downloader:
         self.dateafter = args['dateafter']
         self.user_up_datebefore = args['user_updated_datebefore']
         self.user_up_dateafter = args['user_updated_dateafter']
+        self.only_postname = args['only_postname']
+        self.not_postname = args['skip_postname']
 
         # other
         self.retry = args['retry']
@@ -86,6 +90,9 @@ class downloader:
         self.simulate = args['simulate']
         self.local_hash = args['local_hash']
         self.dupe_check = args['dupe_check']
+        self.force_unlisted = args['force_unlisted']
+        self.retry_403 = args['retry_403']
+        self.fp_added = args['fp_added']
 
         self.session = RefererSession()
         retries = Retry(
@@ -141,8 +148,11 @@ class downloader:
         is_post = found.group(6)
         user = self.get_user(user_id, service)
         if not user:
-            logger.error(f"Unable to find user info in creators list | {service} | {user_id}")
-            return
+            if self.force_unlisted:
+                user={'favorited': 0, 'id': user_id, 'indexed': 1666666666, 'name': user_id, 'service': service, 'updated': 1666666666}
+            else:
+                logger.error(f"Unable to find user info in creators list | {service} | {user_id}")
+                return
         if not is_post:
             if self.skip_user(user):
                 return
@@ -185,7 +195,7 @@ class downloader:
                     logger.exception("Unable to download post | service:{service} user_id:{user_id} post_id:{id}".format(**post['post_variables']))
                 self.comp_posts.append("https://{site}/{service}/user/{user_id}/post/{id}".format(**post['post_variables']))
             # seems like kemono changed this, coomer is not yet
-            if site=='kemono' or len(json)==50:
+            if site.startswith('kemono') or len(json)==50:
                 chunk_size=50
             else:
                 chunk_size=25
@@ -241,7 +251,8 @@ class downloader:
 
     def get_inline_images(self, post, content_soup):
         # only get images that are hosted by the .party site
-        inline_images = [inline_image for inline_image in content_soup.find_all("img") if inline_image['src'][0] == '/']
+        inline_images = [inline_image for inline_image in content_soup.find_all("img") if inline_image.get('src')]
+        inline_images = [inline_image for inline_image in inline_images if inline_image['src'][0] == '/']
         for index, inline_image in enumerate(inline_images):
             file = {}
             filename, file_extension = os.path.splitext(inline_image['src'].rsplit('/')[-1])
@@ -472,9 +483,24 @@ class downloader:
             return
 
         if response.status_code == 403:
-            logger.error(f"Failed to download: {os.path.split(file['file_path'])[1]} | 403 Forbidden")
-            self.post_errors += 1
-            return
+            for _ in range(self.retry_403):
+                logger.info('A 403 encountered, retry without session.')
+                try:
+                    response = requests.get(url=file['file_variables']['url'], stream=True, headers={'Range':f"bytes={resume_size}-", 'Referer':file['file_variables']['referer']}, timeout=self.timeout)
+                except:
+                    logger.exception(f"Failed to get responce: {file['file_variables']['url']} | Retrying")
+                    if retry > 0:
+                        self.download_file(file, retry=retry-1)
+                        return
+                    logger.error(f"Failed to get responce: {file['file_variables']['url']} | All retries failed")
+                    self.post_errors += 1
+                    return
+                if response.status_code != 403:
+                    break
+            if response.status_code == 403:
+                logger.error(f"Failed to download: {os.path.split(file['file_path'])[1]} | 403 Forbidden")
+                self.post_errors += 1
+                return
 
         if response.status_code == 416:
             logger.warning(f"Failed to download: {os.path.split(file['file_path'])[1]} | 416 Range Not Satisfiable | Assuming broken server hash value")
@@ -595,7 +621,7 @@ class downloader:
             if not post['post_variables']['published']:
                 logger.info("Skipping post | post published date not in range")
                 return True
-            elif check_date(self.get_date_by_type(post['post_variables']['published'], self.date_strf_pattern), self.date, self.datebefore, self.dateafter):
+            elif check_date(self.get_date_by_type(post['post_variables']['published' if not self.fp_added else 'added'], self.date_strf_pattern), self.date, self.datebefore, self.dateafter):
                 logger.info("Skipping post | post published date not in range")
                 return True
 
@@ -603,6 +629,22 @@ class downloader:
             logger.info("Skipping post | post was already downloaded this session")
             return True
 
+        # check post title
+        if self.only_postname:
+            skip = True
+            for index, value in self.only_postname:
+                if value.lower() in post['post_variables']['title'].lower():
+                    skip = False
+            if skip:
+                logger.info("Skipping post | post title does not contains wanted word(s)")
+                return True
+                
+        if self.not_postname:
+            for index, value in self.only_postname:
+                if value.lower() in post['post_variables']['title'].lower():
+                    logger.info("Skipping post | post title contains unwanted word(s)")
+                    return True
+        
         return False
 
     def skip_file(self, file:dict):
@@ -621,11 +663,13 @@ class downloader:
                 logger.info(f"Skipping: {os.path.split(file['file_path'])[1]} | File already exists{confirm_msg}")
                 return True
             if self.dupe_check:
-                similar=pathlib.Path(file['file_path']).parent.rglob(f'{file["file_variables"]["index"]}_*')
+                similar=pathlib.Path(file['file_path']).parent.glob(f'{file["file_variables"]["index"]}_*')
                 for x in similar:
                     if 'hash' in file['file_variables'] and file['file_variables']['hash'] != None:
                         sim_hash = get_file_hash(str(x))
                         if sim_hash == file['file_variables']['hash']:
+                            if x.suffix == '.part':
+                                os.rename(x,x.parent/x.stem)
                             logger.info(f"Skipping: {os.path.split(file['file_path'])[1]} | Same hash file exists")
                             return True
 
@@ -638,6 +682,22 @@ class downloader:
             if file['file_variables']['ext'].lower() in self.not_ext:
                 logger.info(f"Skipping: {os.path.split(file['file_path'])[1]} | File extention {file['file_variables']['ext']} found in exclude list {self.not_ext}")
                 return True
+
+        # check file name 
+        if self.only_filename:
+            skip = True
+            for index, value in self.only_filename:
+                if value.lower() in file['file_variables']['filename'].lower():
+                    skip = False
+            if skip:
+                logger.info(f"Skipping: {os.path.split(file['file_path'])[1]} | File name {file['file_variables']['filename']} not found")
+                return True
+                
+        if self.not_filename:
+            for index, value in self.only_filename:
+                if value.lower() in file['file_variables']['filename'].lower():
+                    logger.info(f"Skipping: {os.path.split(file['file_path'])[1]} | File name {file['file_variables']['filename']} found")
+                    return True
 
         # check file size
         if self.min_size or self.max_size:

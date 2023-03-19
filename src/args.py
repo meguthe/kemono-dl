@@ -11,7 +11,7 @@ def get_args():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--cookies",
-                    metavar="FILE", type=str, default=None, required=True,
+                    metavar="FILE", type=str, default=None,
                     help="Takes in a cookie file or a list of cookie files separated by a comma. Used to get around the DDOS protection. Your cookie file must have been gotten while logged in to use the favorite options.")
 
 
@@ -158,8 +158,22 @@ def get_args():
                     metavar="EXT", type=str, default=[],
                     help="Only download attachments or inline images without the given file type(s). Takes a file extensions or list of file extensions separated by a comma. (ex mp4,jpg,gif,zip)")
 
+    ap.add_argument("--only-postname",
+                    metavar="postname", type=str, default=[],
+                    help="Only download posts with given word in its title")
 
+    ap.add_argument("--skip-postname",
+                    metavar="postname", type=str, default=[],
+                    help="Only download posts without given word in its title")
+                    
+    ap.add_argument("--only-filename",
+                    metavar="filename", type=str, default=[],
+                    help="Only download files with given word in its title")
 
+    ap.add_argument("--skip-filename",
+                    metavar="filename", type=str, default=[],
+                    help="Only download files without given word in its title")
+                 
     ap.add_argument("--version",
                     action='version', version=str(__version__),
                     help="Print the version and exit.")
@@ -215,6 +229,18 @@ def get_args():
     ap.add_argument("--no-dupe-check",
                     action='store_true', default=False,
                     help='Simple similar filename file search and hash compare to prevent duplicate downloads, only works with "{index}_" first file naming scheme')
+
+    ap.add_argument("--force-unlisted",
+                    action=argparse.BooleanOptionalAction, default=False,
+                    help='Still try to request api if user is not found in creators list. Use carefully.')
+
+    ap.add_argument("--retry-403",
+                    metavar='COUNT', type=int, default=0,
+                    help='When get 403 (possibly because of DDoS-Guard), retry without session.')
+
+    ap.add_argument("--fp-added",
+                    action=argparse.BooleanOptionalAction, default=False,
+                    help='Filter posts by added date instead of published date. Override behavior of --date --dateafter --datebefore.')
 
     args = vars(ap.parse_args())
 
