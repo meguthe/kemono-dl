@@ -290,6 +290,16 @@ def get_args():
     if args['skip_filetypes']:
         args['skip_filetypes'] = [s.strip().lower() for s in args["skip_filetypes"].split(",")]
 
+    if args['only_filename']:
+        args['only_filename'] = [s.strip().lower() for s in args["only_filename"].split(",")]
+    if args['skip_filename']:
+        args['skip_filename'] = [s.strip().lower() for s in args["skip_filename"].split(",")]
+
+    if args['only_postname']:
+        args['only_postname'] = [s.strip().lower() for s in args["only_postname"].split(",")]
+    if args['skip_postname']:
+        args['skip_postname'] = [s.strip().lower() for s in args["skip_postname"].split(",")]
+
     def check_date(args, key):
         try:
             args[key] = datetime.datetime.strptime(args[key], r'%Y%m%d')
