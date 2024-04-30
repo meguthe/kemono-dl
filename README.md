@@ -3,7 +3,7 @@ A downloader tool for kemono.party and coomer.party.
 
 ## How to use
 1.  Install python 3. (Disable path length limit during install)
-2.  Download source code for the [latest release](https://github.com/AplhaSlayer1964/kemono-dl/releases/latest) and extract it
+2.  Download the [source code](https://github.com/L4cache/kemono-dl/archive/refs/heads/main.zip) and extract it
 3.  Then install requirements with  `pip install -r requirements.txt`
     - If the command doesn't run try adding `python -m`, `python3 -m`, or `py -m` to the front
 4.  Get a cookie.txt file from kemono.party/coomer.party
